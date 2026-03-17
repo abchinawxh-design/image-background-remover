@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { removeBackground } from "@/lib/background-removal";
 
+export const runtime = "edge";
+
 export async function POST(request: Request) {
   try {
     const formData = await request.formData();
