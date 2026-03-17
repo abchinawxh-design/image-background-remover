@@ -28,24 +28,22 @@ The API route accepts a multipart upload with a `file` field.
 
 If no real provider is configured, the app runs in **mock mode** and returns the original image as the result. This keeps the full UX and API testable during MVP development.
 
-## Environment variables for a future provider
-You can later wire in a real provider using variables like:
+## Environment variables for a real provider
+To enable remove.bg, create a `.env.local` file with:
 
 ```bash
 BG_REMOVAL_PROVIDER=removebg
-BG_REMOVAL_API_KEY=your_real_api_key
+BG_REMOVAL_API_KEY=your_remove_bg_api_key
 ```
 
-The current implementation intentionally throws a clear error if these are set but no real provider adapter has been implemented yet.
+If these variables are missing, the app stays in **mock mode** and returns the original image so the full flow remains testable.
 
-## Suggested next step
-Add a provider adapter inside:
-- `src/lib/background-removal.ts`
-
-That file already contains:
+## Current provider support
+Implemented in `src/lib/background-removal.ts`:
 - file type and size validation
 - mock provider fallback
-- a single `removeBackground(file)` entry point for future replacement
+- remove.bg integration via `https://api.remove.bg/v1.0/removebg`
+- a single `removeBackground(file)` entry point for future provider extensions
 
 ## Notes
 - API keys stay server-side only.

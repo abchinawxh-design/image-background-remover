@@ -41,11 +41,48 @@ async function mockRemoveBackground(file: File): Promise<RemovalResult> {
   };
 }
 
+async function removeBackgroundWithRemoveBg(
+  file: File,
+  apiKey: string
+): Promise<RemovalResult> {
+  const formData = new FormData();
+  formData.append("image_file", file, file.name || "upload.png");
+  formData.append("size", "auto");
+
+  const response = await fetch("https://api.remove.bg/v1.0/removebg", {
+    method: "POST",
+    headers: {
+      "X-Api-Key": apiKey,
+    },
+    body: formData,
+  });
+
+  if (!response.ok) {
+    let detail = "";
+    try {
+      detail = await response.text();
+    } catch {
+      detail = "";
+    }
+
+    throw new Error(
+      `remove.bg request failed (${response.status}).${detail ? ` ${detail}` : ""}`
+    );
+  }
+
+  const arrayBuffer = await response.arrayBuffer();
+
+  return {
+    buffer: Buffer.from(arrayBuffer),
+    contentType: "image/png",
+    fileExtension: "png",
+    provider: "configured",
+  };
+}
+
 export async function removeBackground(file: File): Promise<RemovalResult> {
   validateImageFile(file);
 
-  // MVP fallback: until a real provider is wired up, we return the original image.
-  // This keeps the app testable locally and makes provider replacement straightforward.
   const provider = process.env.BG_REMOVAL_PROVIDER;
   const apiKey = process.env.BG_REMOVAL_API_KEY;
 
@@ -53,9 +90,9 @@ export async function removeBackground(file: File): Promise<RemovalResult> {
     return mockRemoveBackground(file);
   }
 
-  // Placeholder for a real provider integration in a later step.
-  // If configured values exist but implementation is not yet added, fail clearly.
-  throw new Error(
-    "A background removal provider is configured, but real provider integration has not been implemented yet."
-  );
+  if (provider === "removebg") {
+    return removeBackgroundWithRemoveBg(file, apiKey);
+  }
+
+  throw new Error(`Unsupported background removal provider: ${provider}`);
 }
