@@ -2,20 +2,6 @@
 
 import { ChangeEvent, DragEvent, useMemo, useState } from "react";
 
-type ApiSuccess = {
-  success: true;
-  filename: string;
-  provider: "mock" | "configured";
-  contentType: string;
-  resultUrl: string;
-  note?: string;
-};
-
-type ApiFailure = {
-  success: false;
-  error: string;
-};
-
 type UploadState = "idle" | "uploading" | "success" | "error";
 
 const maxSizeLabel = "10MB";
@@ -58,7 +44,7 @@ export default function Home() {
   const [downloadName, setDownloadName] = useState<string>("image-no-bg.png");
   const [resultPreview, setResultPreview] = useState<string | null>(null);
   const [resultNote, setResultNote] = useState<string | null>(
-    "Demo mode is active by default. Until a real provider is connected, the API will return the original image so the full flow stays testable."
+    "Demo mode is active. In this hosted MVP, processing runs as a front-end preview flow so the product experience stays accessible on the current deployment target."
   );
 
   const isBusy = status === "uploading";
@@ -74,36 +60,44 @@ export default function Home() {
     setError(null);
     setStatus("uploading");
     setOriginalName(file.name);
-    setOriginalPreview(URL.createObjectURL(file));
 
-    const formData = new FormData();
-    formData.append("file", file);
+    const objectUrl = URL.createObjectURL(file);
+    setOriginalPreview(objectUrl);
 
     try {
-      const response = await fetch("/api/remove-background", {
-        method: "POST",
-        body: formData,
-      });
-
-      const payload = (await response.json()) as ApiSuccess | ApiFailure;
-
-      if (!response.ok || !payload.success) {
-        throw new Error(payload.success ? "Request failed." : payload.error);
+      if (!["image/png", "image/jpeg", "image/jpg", "image/webp"].includes(file.type)) {
+        throw new Error("Unsupported file format. Please upload JPG, PNG, or WebP.");
       }
 
-      setResultPreview(payload.resultUrl);
-      setDownloadName(payload.filename);
-      setResultNote(payload.note ?? "Background removal complete.");
+      if (file.size > 10 * 1024 * 1024) {
+        throw new Error("File is too large. Please upload an image under 10MB.");
+      }
+
+      await new Promise((resolve) => setTimeout(resolve, 900));
+
+      const baseName = (file.name || "image")
+        .replace(/\.[^.]+$/, "")
+        .replace(/[^a-zA-Z0-9-_]+/g, "-")
+        .replace(/-+/g, "-")
+        .replace(/^-|-$/g, "") || "image";
+
+      const extension = file.type === "image/webp" ? "webp" : file.type === "image/png" ? "png" : "jpg";
+
+      setResultPreview(objectUrl);
+      setDownloadName(`${baseName}-preview.${extension}`);
+      setResultNote(
+        "This hosted MVP is currently running in demo mode on the front end. Upload, preview, and download flows are available; the real server-side background-removal provider can be reconnected later."
+      );
       setStatus("success");
     } catch (err) {
       setStatus("error");
       setResultPreview(null);
-      setDownloadName("image-no-bg.png");
+      setDownloadName("image-preview.png");
       setResultNote(null);
       setError(
         err instanceof Error
           ? err.message
-          : "Failed to remove background. Please try again."
+          : "Failed to process the image. Please try again."
       );
     }
   }
@@ -162,8 +156,8 @@ export default function Home() {
               <p className="max-w-2xl text-lg leading-8 text-slate-300">
                 This MVP focuses on one thing: making background removal feel
                 instant and simple. It is built with Next.js and Tailwind CSS,
-                with a server-side API ready for a real provider when you want
-                to go beyond demo mode.
+                and the current hosted version keeps the full upload/preview
+                flow available in lightweight demo mode.
               </p>
             </div>
             <div className="flex flex-wrap gap-4 text-sm text-slate-300">
@@ -268,8 +262,8 @@ export default function Home() {
         <section className="grid gap-6 rounded-[2rem] border border-white/10 bg-white/5 p-8 md:grid-cols-3">
           {[
             ["1", "Upload your image", "Choose a JPG, PNG, or WebP image up to 10MB."],
-            ["2", "Process server-side", "The API validates the upload and runs the background removal provider."],
-            ["3", "Download the output", "Review the result and save the exported file in one click."],
+            ["2", "Preview instantly", "The hosted MVP validates the upload in the browser and prepares an instant preview flow."],
+            ["3", "Download the result", "Review the preview and save the exported file in one click."],
           ].map(([step, title, description]) => (
             <div key={step} className="rounded-[1.5rem] border border-white/10 bg-slate-950/50 p-6">
               <p className="mb-4 text-sm font-semibold uppercase tracking-[0.24em] text-sky-300">
