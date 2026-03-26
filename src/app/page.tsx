@@ -1,6 +1,7 @@
 "use client";
 
 import { ChangeEvent, DragEvent, useMemo, useState } from "react";
+import { useSession, signIn, signOut } from "next-auth/react";
 
 type UploadState = "idle" | "uploading" | "success" | "error";
 
@@ -36,6 +37,7 @@ function checkerboardBackground() {
 }
 
 export default function Home() {
+  const { data: session } = useSession();
   const [dragging, setDragging] = useState(false);
   const [status, setStatus] = useState<UploadState>("idle");
   const [error, setError] = useState<string | null>(null);
@@ -141,6 +143,32 @@ export default function Home() {
             <a className="hover:text-white" href="/terms">
               Terms
             </a>
+            {session?.user ? (
+              <div className="flex items-center gap-3">
+                {session.user.image && (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={session.user.image}
+                    alt={session.user.name ?? "User avatar"}
+                    className="h-7 w-7 rounded-full border border-white/20"
+                  />
+                )}
+                <span className="text-slate-300">{session.user.name ?? session.user.email}</span>
+                <button
+                  onClick={() => void signOut()}
+                  className="rounded-full border border-white/20 bg-white/5 px-4 py-1.5 text-sm text-slate-200 hover:bg-white/10 hover:text-white transition-colors"
+                >
+                  Sign out
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={() => void signIn("google")}
+                className="rounded-full border border-sky-400/40 bg-sky-400/10 px-4 py-1.5 text-sm text-sky-200 hover:bg-sky-400/20 hover:text-white transition-colors"
+              >
+                Sign in with Google
+              </button>
+            )}
           </nav>
         </header>
 
