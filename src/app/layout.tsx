@@ -13,7 +13,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://image-background-remover.example.com"),
+  metadataBase: new URL("https://stepnewworld.com"),
   title: "Image Background Remover - Remove Background from Images Online",
   description:
     "Remove background from images online in seconds. Upload your photo, erase the background automatically, and download a transparent PNG-style result instantly.",
