@@ -9,10 +9,6 @@ export interface User {
   updated_at: number;
 }
 
-/**
- * Upsert user on OAuth login.
- * Called from NextAuth session/jwt callback.
- */
 export async function upsertUser(user: {
   id: string;
   email: string;
@@ -35,14 +31,11 @@ export async function upsertUser(user: {
     .run();
 }
 
-/**
- * Fetch a user by ID. Returns null if not found.
- */
 export async function getUserById(id: string): Promise<User | null> {
   const db = await getDB();
   const row = await db
     .prepare(`SELECT * FROM users WHERE id = ?1`)
     .bind(id)
-    .first<User>();
-  return row ?? null;
+    .first();
+  return (row as User) ?? null;
 }
