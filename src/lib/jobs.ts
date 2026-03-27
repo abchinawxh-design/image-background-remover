@@ -21,7 +21,7 @@ export async function createJob(
     provider: string;
     status: "success" | "failed";
   },
-  db?: D1Database
+  db?: any
 ): Promise<void> {
   const database = db ?? (await getDB());
   const id = crypto.randomUUID();
@@ -48,7 +48,7 @@ export async function createJob(
   }
 }
 
-export async function listJobsByUser(userId: string, db?: D1Database): Promise<RemovalJob[]> {
+export async function listJobsByUser(userId: string, db?: any): Promise<RemovalJob[]> {
   const database = db ?? (await getDB());
   const result = await database
     .prepare(
@@ -65,7 +65,7 @@ export async function listJobsByUser(userId: string, db?: D1Database): Promise<R
 export async function getMonthlyUsage(
   userId: string,
   yearMonth?: string,
-  db?: D1Database
+  db?: any
 ): Promise<number> {
   const database = db ?? (await getDB());
   const ym = yearMonth ?? new Date().toISOString().slice(0, 7);

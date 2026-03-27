@@ -19,7 +19,7 @@ export async function GET() {
   try {
     const { env } = await getCloudflareContext();
     // @ts-expect-error runtime binding
-    const db = env.DB as D1Database | undefined;
+    const db = env.DB as any;
     if (!db) {
       result.d1 = "MISSING - env.DB is undefined";
     } else {
@@ -34,7 +34,7 @@ export async function GET() {
   try {
     const { env } = await getCloudflareContext();
     // @ts-expect-error runtime binding
-    const db = env.DB as D1Database | undefined;
+    const db = env.DB as any;
     if (db) {
       const users = await db.prepare("SELECT id, email, created_at FROM users LIMIT 5").all();
       const jobs = await db.prepare("SELECT id, user_id, filename, status, created_at FROM removal_jobs ORDER BY created_at DESC LIMIT 5").all();
