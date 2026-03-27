@@ -9,11 +9,6 @@ export interface RemovalJob {
   created_at: number;
 }
 
-/**
- * Record a background removal attempt.
- * user_id may be null for anonymous requests.
- * Accepts optional pre-fetched db instance to avoid async context issues.
- */
 export async function createJob(
   job: {
     userId: string | null;
@@ -58,8 +53,8 @@ export async function listJobsByUser(userId: string, db?: any): Promise<RemovalJ
        LIMIT 20`
     )
     .bind(userId)
-    .all<RemovalJob>();
-  return result.results;
+    .all();
+  return (result.results ?? []) as RemovalJob[];
 }
 
 export async function getMonthlyUsage(
@@ -74,6 +69,6 @@ export async function getMonthlyUsage(
       `SELECT count FROM usage_monthly WHERE user_id = ?1 AND year_month = ?2`
     )
     .bind(userId, ym)
-    .first<{ count: number }>();
-  return row?.count ?? 0;
+    .first();
+  return (row as any)?.count ?? 0;
 }
