@@ -12,30 +12,28 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   session: { strategy: "jwt" },
   trustHost: true,
   callbacks: {
-    // Persist user to D1 on first login / each session refresh
-    async jwt({ token, user, account }) {
-      if (account && user) {
-        // First sign-in: user object is populated
+    async jwt({ token, account }) {
+      if (account) {
+        // Pin sub to Google's stable providerAccountId (numeric string)
+        // This ensures the same user always gets the same ID across sessions
+        token.sub = account.providerAccountId;
         try {
           await upsertUser({
-            id: token.sub!,
+            id: token.sub,
             email: token.email!,
             name: token.name,
-            image: token.picture,
+            image: token.picture as string | undefined,
           });
         } catch (e) {
-          // Non-fatal: log but don't break auth flow
           console.error("[auth] upsertUser failed:", e);
         }
       }
       return token;
     },
-    // Expose user.id to client session
     session({ session, token }) {
       session.user.id = token.sub!;
       return session;
     },
-    // Optional auth: all routes public
     authorized: () => true,
   },
 });

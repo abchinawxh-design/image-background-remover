@@ -5,13 +5,13 @@ import { createJob } from "@/lib/jobs";
 import { getDB } from "@/lib/db";
 
 export async function POST(request: Request) {
-  // Fetch session and DB at the very top, before any async branching
   const [session, db] = await Promise.all([
-    auth().catch(() => null),
-    getDB().catch(() => null),
+    auth().catch((e) => { console.error("[remove-bg] auth() failed:", e); return null; }),
+    getDB().catch((e) => { console.error("[remove-bg] getDB() failed:", e); return null; }),
   ]);
 
   const userId = session?.user?.id ?? null;
+  console.log("[remove-bg] userId:", userId, "db:", db ? "OK" : "MISSING");
 
   let filename = "image";
   try {
@@ -35,16 +35,18 @@ export async function POST(request: Request) {
     filename = `${baseName}-no-bg.${result.fileExtension}`;
     const dataUrl = `data:${result.contentType};base64,${result.buffer.toString("base64")}`;
 
-    // Record job (non-fatal)
     if (db) {
       try {
         await createJob(
           { userId, filename, provider: result.provider, status: "success" },
           db
         );
+        console.log("[remove-bg] createJob success for userId:", userId);
       } catch (e) {
-        console.error("[remove-background] createJob failed:", e);
+        console.error("[remove-bg] createJob failed:", e);
       }
+    } else {
+      console.error("[remove-bg] skipping createJob: db is null");
     }
 
     return NextResponse.json({
@@ -71,7 +73,7 @@ export async function POST(request: Request) {
           db
         );
       } catch (e) {
-        console.error("[remove-background] createJob (failed) error:", e);
+        console.error("[remove-bg] createJob (failed job) error:", e);
       }
     }
 
