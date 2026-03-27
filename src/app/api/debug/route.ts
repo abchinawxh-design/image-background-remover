@@ -23,7 +23,7 @@ export async function GET() {
     if (!db) {
       result.d1 = "MISSING - env.DB is undefined";
     } else {
-      const test = await db.prepare("SELECT 1 as ok").first<{ ok: number }>();
+      const test = await db.prepare("SELECT 1 as ok").first();
       result.d1 = test?.ok === 1 ? "OK" : "QUERY_FAILED";
     }
   } catch (e) {
