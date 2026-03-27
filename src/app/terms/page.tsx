@@ -1,3 +1,5 @@
+export const runtime = 'edge';
+
 export const metadata = {
   title: "Terms of Service | Image Background Remover",
   description: "Terms of service for the Image Background Remover MVP website.",
