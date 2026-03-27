@@ -143,6 +143,11 @@ export default function Home() {
             <a className="hover:text-white" href="/terms">
               Terms
             </a>
+            {session?.user && (
+              <a className="hover:text-white" href="/dashboard">
+                Dashboard
+              </a>
+            )}
             {session?.user ? (
               <div className="flex items-center gap-3">
                 {session.user.image && (

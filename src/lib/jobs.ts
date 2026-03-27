@@ -1,0 +1,82 @@
+import { getDB } from "./db";
+
+export interface RemovalJob {
+  id: string;
+  user_id: string | null;
+  filename: string;
+  provider: string;
+  status: string;
+  created_at: number;
+}
+
+/**
+ * Record a background removal attempt.
+ * user_id may be null for anonymous requests.
+ */
+export async function createJob(job: {
+  userId: string | null;
+  filename: string;
+  provider: string;
+  status: "success" | "failed";
+}): Promise<void> {
+  const db = await getDB();
+  const id = crypto.randomUUID();
+  const now = Date.now();
+
+  // Insert job record
+  await db
+    .prepare(
+      `INSERT INTO removal_jobs (id, user_id, filename, provider, status, created_at)
+       VALUES (?1, ?2, ?3, ?4, ?5, ?6)`
+    )
+    .bind(id, job.userId, job.filename, job.provider, job.status, now)
+    .run();
+
+  // Update monthly usage counter for logged-in users
+  if (job.userId && job.status === "success") {
+    const yearMonth = new Date().toISOString().slice(0, 7); // '2026-03'
+    await db
+      .prepare(
+        `INSERT INTO usage_monthly (user_id, year_month, count)
+         VALUES (?1, ?2, 1)
+         ON CONFLICT(user_id, year_month) DO UPDATE SET count = count + 1`
+      )
+      .bind(job.userId, yearMonth)
+      .run();
+  }
+}
+
+/**
+ * List recent jobs for a user (max 20).
+ */
+export async function listJobsByUser(userId: string): Promise<RemovalJob[]> {
+  const db = await getDB();
+  const result = await db
+    .prepare(
+      `SELECT * FROM removal_jobs
+       WHERE user_id = ?1
+       ORDER BY created_at DESC
+       LIMIT 20`
+    )
+    .bind(userId)
+    .all<RemovalJob>();
+  return result.results;
+}
+
+/**
+ * Get monthly usage count for a user.
+ */
+export async function getMonthlyUsage(
+  userId: string,
+  yearMonth?: string
+): Promise<number> {
+  const db = await getDB();
+  const ym = yearMonth ?? new Date().toISOString().slice(0, 7);
+  const row = await db
+    .prepare(
+      `SELECT count FROM usage_monthly WHERE user_id = ?1 AND year_month = ?2`
+    )
+    .bind(userId, ym)
+    .first<{ count: number }>();
+  return row?.count ?? 0;
+}
