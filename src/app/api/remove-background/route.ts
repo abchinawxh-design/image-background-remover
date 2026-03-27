@@ -5,15 +5,19 @@ import { createJob } from "@/lib/jobs";
 import { getDB } from "@/lib/db";
 
 export async function POST(request: Request) {
-  const [session, db] = await Promise.all([
-    auth().catch((e) => { console.error("[remove-bg] auth() failed:", e); return null; }),
-    getDB().catch((e) => { console.error("[remove-bg] getDB() failed:", e); return null; }),
-  ]);
+  // Sequential calls to preserve Cloudflare async context
+  let session = null;
+  let db = null;
+  try { session = await auth(); } catch (e) { console.error("[remove-bg] auth() failed:", e); }
+  try { db = await getDB(); } catch (e) { console.error("[remove-bg] getDB() failed:", e); }
 
   const userId = session?.user?.id ?? null;
   console.log("[remove-bg] userId:", userId, "db:", db ? "OK" : "MISSING");
 
   let filename = "image";
+  let jobRecorded = false;
+  let jobError = null;
+
   try {
     const formData = await request.formData();
     const file = formData.get("file");
@@ -41,11 +45,14 @@ export async function POST(request: Request) {
           { userId, filename, provider: result.provider, status: "success" },
           db
         );
-        console.log("[remove-bg] createJob success for userId:", userId);
+        jobRecorded = true;
+        console.log("[remove-bg] createJob OK for userId:", userId);
       } catch (e) {
+        jobError = String(e);
         console.error("[remove-bg] createJob failed:", e);
       }
     } else {
+      jobError = "db is null";
       console.error("[remove-bg] skipping createJob: db is null");
     }
 
@@ -55,31 +62,24 @@ export async function POST(request: Request) {
       provider: result.provider,
       contentType: result.contentType,
       resultUrl: dataUrl,
+      _debug: { userId, dbOk: !!db, jobRecorded, jobError },
       note:
         result.provider === "mock"
-          ? "Mock mode is active. The current result reuses the original image until a real provider is connected."
+          ? "Mock mode is active."
           : undefined,
     });
   } catch (error) {
     const message =
-      error instanceof Error
-        ? error.message
-        : "Failed to remove background. Please try again.";
+      error instanceof Error ? error.message : "Failed to remove background. Please try again.";
 
     if (db) {
       try {
-        await createJob(
-          { userId, filename, provider: "unknown", status: "failed" },
-          db
-        );
+        await createJob({ userId, filename, provider: "unknown", status: "failed" }, db);
       } catch (e) {
         console.error("[remove-bg] createJob (failed job) error:", e);
       }
     }
 
-    return NextResponse.json(
-      { success: false, error: message },
-      { status: 400 }
-    );
+    return NextResponse.json({ success: false, error: message }, { status: 400 });
   }
 }
