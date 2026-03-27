@@ -5,3 +5,4 @@ export async function getDB() {
   // @ts-expect-error D1Database binding injected at runtime
   return env.DB as D1Database;
 }
+// 1774600882
