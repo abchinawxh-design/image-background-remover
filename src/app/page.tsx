@@ -150,15 +150,17 @@ export default function Home() {
             )}
             {session?.user ? (
               <div className="flex items-center gap-3">
-                {session.user.image && (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={session.user.image}
-                    alt={session.user.name ?? "User avatar"}
-                    className="h-7 w-7 rounded-full border border-white/20"
-                  />
-                )}
-                <span className="text-slate-300">{session.user.name ?? session.user.email}</span>
+                <a href="/dashboard" className="flex items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity">
+                  {session.user.image && (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={session.user.image}
+                      alt={session.user.name ?? "User avatar"}
+                      className="h-7 w-7 rounded-full border border-white/20"
+                    />
+                  )}
+                  <span className="text-slate-300">{session.user.name ?? session.user.email}</span>
+                </a>
                 <button
                   onClick={() => void signOut()}
                   className="rounded-full border border-white/20 bg-white/5 px-4 py-1.5 text-sm text-slate-200 hover:bg-white/10 hover:text-white transition-colors"
