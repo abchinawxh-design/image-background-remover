@@ -2,10 +2,15 @@ import { NextResponse } from "next/server";
 import { removeBackground } from "@/lib/background-removal";
 import { auth } from "@/auth";
 import { createJob } from "@/lib/jobs";
+import { getDB } from "@/lib/db";
 
 export async function POST(request: Request) {
-  // Get session — user_id may be null for anonymous requests
-  const session = await auth();
+  // Fetch session and DB at the very top, before any async branching
+  const [session, db] = await Promise.all([
+    auth().catch(() => null),
+    getDB().catch(() => null),
+  ]);
+
   const userId = session?.user?.id ?? null;
 
   let filename = "image";
@@ -31,15 +36,15 @@ export async function POST(request: Request) {
     const dataUrl = `data:${result.contentType};base64,${result.buffer.toString("base64")}`;
 
     // Record job (non-fatal)
-    try {
-      await createJob({
-        userId,
-        filename,
-        provider: result.provider,
-        status: "success",
-      });
-    } catch (e) {
-      console.error("[remove-background] createJob failed:", e);
+    if (db) {
+      try {
+        await createJob(
+          { userId, filename, provider: result.provider, status: "success" },
+          db
+        );
+      } catch (e) {
+        console.error("[remove-background] createJob failed:", e);
+      }
     }
 
     return NextResponse.json({
@@ -59,16 +64,15 @@ export async function POST(request: Request) {
         ? error.message
         : "Failed to remove background. Please try again.";
 
-    // Record failed job (non-fatal)
-    try {
-      await createJob({
-        userId,
-        filename,
-        provider: "unknown",
-        status: "failed",
-      });
-    } catch (e) {
-      console.error("[remove-background] createJob (failed) error:", e);
+    if (db) {
+      try {
+        await createJob(
+          { userId, filename, provider: "unknown", status: "failed" },
+          db
+        );
+      } catch (e) {
+        console.error("[remove-background] createJob (failed) error:", e);
+      }
     }
 
     return NextResponse.json(

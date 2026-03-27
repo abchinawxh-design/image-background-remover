@@ -12,19 +12,22 @@ export interface RemovalJob {
 /**
  * Record a background removal attempt.
  * user_id may be null for anonymous requests.
+ * Accepts optional pre-fetched db instance to avoid async context issues.
  */
-export async function createJob(job: {
-  userId: string | null;
-  filename: string;
-  provider: string;
-  status: "success" | "failed";
-}): Promise<void> {
-  const db = await getDB();
+export async function createJob(
+  job: {
+    userId: string | null;
+    filename: string;
+    provider: string;
+    status: "success" | "failed";
+  },
+  db?: D1Database
+): Promise<void> {
+  const database = db ?? (await getDB());
   const id = crypto.randomUUID();
   const now = Date.now();
 
-  // Insert job record
-  await db
+  await database
     .prepare(
       `INSERT INTO removal_jobs (id, user_id, filename, provider, status, created_at)
        VALUES (?1, ?2, ?3, ?4, ?5, ?6)`
@@ -32,10 +35,9 @@ export async function createJob(job: {
     .bind(id, job.userId, job.filename, job.provider, job.status, now)
     .run();
 
-  // Update monthly usage counter for logged-in users
   if (job.userId && job.status === "success") {
-    const yearMonth = new Date().toISOString().slice(0, 7); // '2026-03'
-    await db
+    const yearMonth = new Date().toISOString().slice(0, 7);
+    await database
       .prepare(
         `INSERT INTO usage_monthly (user_id, year_month, count)
          VALUES (?1, ?2, 1)
@@ -46,12 +48,9 @@ export async function createJob(job: {
   }
 }
 
-/**
- * List recent jobs for a user (max 20).
- */
-export async function listJobsByUser(userId: string): Promise<RemovalJob[]> {
-  const db = await getDB();
-  const result = await db
+export async function listJobsByUser(userId: string, db?: D1Database): Promise<RemovalJob[]> {
+  const database = db ?? (await getDB());
+  const result = await database
     .prepare(
       `SELECT * FROM removal_jobs
        WHERE user_id = ?1
@@ -63,16 +62,14 @@ export async function listJobsByUser(userId: string): Promise<RemovalJob[]> {
   return result.results;
 }
 
-/**
- * Get monthly usage count for a user.
- */
 export async function getMonthlyUsage(
   userId: string,
-  yearMonth?: string
+  yearMonth?: string,
+  db?: D1Database
 ): Promise<number> {
-  const db = await getDB();
+  const database = db ?? (await getDB());
   const ym = yearMonth ?? new Date().toISOString().slice(0, 7);
-  const row = await db
+  const row = await database
     .prepare(
       `SELECT count FROM usage_monthly WHERE user_id = ?1 AND year_month = ?2`
     )
