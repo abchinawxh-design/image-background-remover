@@ -30,5 +30,20 @@ export async function GET() {
     result.d1Error = String(e);
   }
 
+  // Query table contents
+  try {
+    const { env } = await getCloudflareContext();
+    // @ts-expect-error runtime binding
+    const db = env.DB as D1Database | undefined;
+    if (db) {
+      const users = await db.prepare("SELECT id, email, created_at FROM users LIMIT 5").all();
+      const jobs = await db.prepare("SELECT id, user_id, filename, status, created_at FROM removal_jobs ORDER BY created_at DESC LIMIT 5").all();
+      const usage = await db.prepare("SELECT * FROM usage_monthly LIMIT 5").all();
+      result.tables = { users: users.results, jobs: jobs.results, usage: usage.results };
+    }
+  } catch (e) {
+    result.tablesError = String(e);
+  }
+
   return NextResponse.json(result);
 }
