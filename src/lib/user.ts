@@ -17,12 +17,15 @@ export async function upsertUser(user: {
 }): Promise<void> {
   const db = await getDB();
   const now = Date.now();
+  // Conflict on email (UNIQUE): handles the case where the same Google account
+  // was previously stored with a different id (e.g., old UUID bug).
+  // We always trust the latest Google sub as the canonical id.
   await db
     .prepare(
       `INSERT INTO users (id, email, name, image, created_at, updated_at)
        VALUES (?1, ?2, ?3, ?4, ?5, ?5)
-       ON CONFLICT(id) DO UPDATE SET
-         email      = excluded.email,
+       ON CONFLICT(email) DO UPDATE SET
+         id         = excluded.id,
          name       = excluded.name,
          image      = excluded.image,
          updated_at = excluded.updated_at`
