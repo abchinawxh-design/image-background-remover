@@ -45,5 +45,12 @@ export async function GET() {
     result.tablesError = String(e);
   }
 
+  // Check env vars (values masked)
+  result.env = {
+    BG_REMOVAL_PROVIDER: process.env.BG_REMOVAL_PROVIDER ?? "MISSING",
+    BG_REMOVAL_API_KEY: process.env.BG_REMOVAL_API_KEY ? "SET" : "MISSING",
+    AUTH_SECRET: process.env.AUTH_SECRET ? "SET" : "MISSING",
+  };
+
   return NextResponse.json(result);
 }
