@@ -1,10 +1,13 @@
 import { NextResponse } from "next/server";
 import { getCloudflareContext } from "@opennextjs/cloudflare";
 
+// 1x1 transparent PNG (minimal valid image for testing)
+const TEST_PNG_BASE64 =
+  "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==";
+
 export async function GET() {
   const result: Record<string, unknown> = {};
 
-  // Get env vars from CF context
   let bgProvider: string | undefined;
   let bgApiKey: string | undefined;
   try {
@@ -21,20 +24,44 @@ export async function GET() {
   result.bgApiKeySet = !!bgApiKey;
   result.bgApiKeyPrefix = bgApiKey ? bgApiKey.slice(0, 6) + "..." : "MISSING";
 
-  // Test a minimal remove.bg API call (account info endpoint)
-  if (bgApiKey) {
-    try {
-      const resp = await fetch("https://api.remove.bg/v1.0/account", {
-        headers: { "X-Api-Key": bgApiKey },
-      });
+  if (!bgApiKey) {
+    result.error = "No API key — cannot test";
+    return NextResponse.json(result);
+  }
+
+  // Build a minimal FormData with a real PNG file
+  try {
+    const pngBytes = Buffer.from(TEST_PNG_BASE64, "base64");
+    const blob = new Blob([pngBytes], { type: "image/png" });
+    const formData = new FormData();
+    formData.append("image_file", blob, "test.png");
+    formData.append("size", "auto");
+
+    const resp = await fetch("https://api.remove.bg/v1.0/removebg", {
+      method: "POST",
+      headers: { "X-Api-Key": bgApiKey },
+      body: formData,
+    });
+
+    result.removebgHttpStatus = resp.status;
+    result.removebgHeaders = {
+      contentType: resp.headers.get("content-type"),
+      xCreditsCharged: resp.headers.get("x-credits-charged"),
+      xWidth: resp.headers.get("x-width"),
+      xHeight: resp.headers.get("x-height"),
+    };
+
+    if (resp.ok) {
+      const buf = await resp.arrayBuffer();
+      result.removebgSuccess = true;
+      result.removebgResultBytes = buf.byteLength;
+    } else {
       const text = await resp.text();
-      result.removebgStatus = resp.status;
-      result.removebgResponse = text.slice(0, 500);
-    } catch (e) {
-      result.removebgError = String(e);
+      result.removebgSuccess = false;
+      result.removebgErrorBody = text.slice(0, 500);
     }
-  } else {
-    result.removebgSkipped = "No API key";
+  } catch (e) {
+    result.removebgCallError = String(e);
   }
 
   return NextResponse.json(result);
