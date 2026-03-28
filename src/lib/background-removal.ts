@@ -80,11 +80,16 @@ async function removeBackgroundWithRemoveBg(
   };
 }
 
-export async function removeBackground(file: File): Promise<RemovalResult> {
+export async function removeBackground(
+  file: File,
+  config?: { provider?: string; apiKey?: string }
+): Promise<RemovalResult> {
   validateImageFile(file);
 
-  const provider = process.env.BG_REMOVAL_PROVIDER;
-  const apiKey = process.env.BG_REMOVAL_API_KEY;
+  // Prefer explicitly passed config (from CF env binding),
+  // fall back to process.env for local dev.
+  const provider = config?.provider ?? process.env.BG_REMOVAL_PROVIDER;
+  const apiKey = config?.apiKey ?? process.env.BG_REMOVAL_API_KEY;
 
   if (!provider || !apiKey) {
     return mockRemoveBackground(file);

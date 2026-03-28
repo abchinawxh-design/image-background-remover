@@ -5,14 +5,22 @@ import { createJob } from "@/lib/jobs";
 import { getCloudflareContext } from "@opennextjs/cloudflare";
 
 export async function POST(request: Request) {
-  // Capture CF context + DB binding at the very start of the handler,
+  // Capture CF context + DB binding + env vars at the very start of the handler,
   // before any async operation that could break AsyncLocalStorage.
+  // IMPORTANT: In Cloudflare Workers, secrets are NOT in process.env —
+  // they must be read from getCloudflareContext().env.
   let db: any = null;
+  let bgProvider: string | undefined;
+  let bgApiKey: string | undefined;
   try {
     const { env } = await getCloudflareContext();
     db = (env as any).DB ?? null;
+    bgProvider = (env as any).BG_REMOVAL_PROVIDER ?? process.env.BG_REMOVAL_PROVIDER;
+    bgApiKey = (env as any).BG_REMOVAL_API_KEY ?? process.env.BG_REMOVAL_API_KEY;
   } catch (e) {
     console.error("[remove-bg] getCloudflareContext failed:", e);
+    bgProvider = process.env.BG_REMOVAL_PROVIDER;
+    bgApiKey = process.env.BG_REMOVAL_API_KEY;
   }
 
   let session = null;
@@ -42,7 +50,7 @@ export async function POST(request: Request) {
       .replace(/-+/g, "-")
       .replace(/^-|-$/g, "") || "image";
 
-    const result = await removeBackground(file);
+    const result = await removeBackground(file, { provider: bgProvider, apiKey: bgApiKey });
     filename = `${baseName}-no-bg.${result.fileExtension}`;
     const dataUrl = `data:${result.contentType};base64,${result.buffer.toString("base64")}`;
 
