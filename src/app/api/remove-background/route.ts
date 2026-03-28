@@ -93,8 +93,15 @@ export async function POST(request: Request) {
       provider: result.provider,
       contentType: result.contentType,
       resultUrl: dataUrl,
-      _debug: { userId, dbOk: !!db, jobRecorded, jobError },
-      note: result.provider === "mock" ? "Mock mode is active." : undefined,
+      _debug: {
+        userId,
+        dbOk: !!db,
+        jobRecorded,
+        jobError,
+        bgProvider: bgProvider ?? "MISSING",
+        bgApiKeySet: !!bgApiKey,
+      },
+      note: result.provider === "mock" ? "Mock mode is active. Background was NOT removed." : undefined,
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Failed to remove background. Please try again.";
