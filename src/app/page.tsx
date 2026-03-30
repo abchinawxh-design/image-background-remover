@@ -15,15 +15,23 @@ const faqs = [
   },
   {
     q: "Do I need to create an account?",
-    a: "No. This MVP is intentionally frictionless, so you can try it without signing in.",
+    a: "Yes. Sign in with Google to use the tool. New accounts get 3 free removals — no credit card required.",
   },
   {
-    q: "Is the current version using real AI background removal?",
-    a: "The app is wired for a real provider, but local test mode currently returns the original image until a provider API is connected.",
+    q: "How many free removals do I get?",
+    a: "Every new account gets 3 free background removals. These don't expire, but they don't renew. Upgrade to Pro for 100 removals/month.",
   },
   {
-    q: "Will my image be stored forever?",
-    a: "No. This MVP is designed for temporary processing only and should be configured with short-lived storage if persistence is added later.",
+    q: "How does Pro work?",
+    a: "Pro gives you 100 background removals per month for $4.99/month (or $39.99/year). Your quota resets at the start of each calendar month.",
+  },
+  {
+    q: "Is the background removal real AI?",
+    a: "Yes. We use the remove.bg API — a best-in-class AI model. Results are returned in seconds.",
+  },
+  {
+    q: "Will my image be stored?",
+    a: "Images are processed in real-time and not stored on our servers. We only keep metadata (filename, timestamp) for your usage history.",
   },
 ];
 
@@ -83,6 +91,12 @@ export default function Home() {
 
       const data = await response.json();
 
+      if (response.status === 401) {
+        throw new Error("Please sign in to use this feature. New accounts get 3 free removals.");
+      }
+      if (response.status === 403) {
+        throw new Error(data.error || "You've reached your usage limit. Upgrade to Pro for more.");
+      }
       if (!response.ok || !data.success) {
         throw new Error(data.error || "Failed to remove background. Please try again.");
       }
@@ -139,6 +153,9 @@ export default function Home() {
           <nav className="flex flex-wrap items-center gap-3 text-sm text-slate-300">
             <a className="hover:text-white" href="#upload">
               Upload
+            </a>
+            <a className="hover:text-white" href="/pricing">
+              Pricing
             </a>
             <a className="hover:text-white" href="#faq">
               FAQ
