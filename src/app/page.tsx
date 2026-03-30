@@ -45,7 +45,7 @@ function checkerboardBackground() {
 }
 
 export default function Home() {
-  const { data: session } = useSession();
+  const { data: session, status: sessionStatus } = useSession();
   const [dragging, setDragging] = useState(false);
   const [status, setStatus] = useState<UploadState>("idle");
   const [error, setError] = useState<string | null>(null);
@@ -56,13 +56,15 @@ export default function Home() {
   const [resultNote, setResultNote] = useState<string | null>(null);
 
   const isBusy = status === "uploading";
+  const isLoggedIn = sessionStatus === "authenticated";
 
   const helperText = useMemo(() => {
+    if (!isLoggedIn && sessionStatus !== "loading") return "Sign in with Google to get 3 free removals — no credit card required.";
     if (status === "uploading") return "Removing background…";
     if (status === "success") return "Done. Review the result and download it.";
     if (status === "error") return error ?? "Something went wrong.";
     return `Supports ${supportedFormats}. Max file size: ${maxSizeLabel}.`;
-  }, [status, error]);
+  }, [status, error, isLoggedIn, sessionStatus]);
 
   async function processFile(file: File) {
     setError(null);
@@ -133,9 +135,19 @@ export default function Home() {
   function onDrop(event: DragEvent<HTMLLabelElement>) {
     event.preventDefault();
     setDragging(false);
+    if (!isLoggedIn) {
+      void signIn("google");
+      return;
+    }
     const file = event.dataTransfer.files?.[0];
     if (!file) return;
     void processFile(file);
+  }
+
+  function onUploadAreaClick() {
+    if (!isLoggedIn) {
+      void signIn("google");
+    }
   }
 
   return (
@@ -220,7 +232,7 @@ export default function Home() {
             </div>
             <div className="flex flex-wrap gap-4 text-sm text-slate-300">
               <span className="rounded-full border border-white/10 px-4 py-2">
-                No sign-up required
+                3 free removals on sign-up
               </span>
               <span className="rounded-full border border-white/10 px-4 py-2">
                 {supportedFormats}
@@ -247,26 +259,29 @@ export default function Home() {
               }}
               onDragLeave={() => setDragging(false)}
               onDrop={onDrop}
+              onClick={onUploadAreaClick}
               className={`flex min-h-64 cursor-pointer flex-col items-center justify-center rounded-[1.5rem] border border-dashed px-6 py-10 text-center transition ${
                 dragging
                   ? "border-sky-300 bg-sky-400/10"
-                  : "border-white/15 bg-white/5 hover:border-sky-300/60 hover:bg-white/8"
+                  : isLoggedIn
+                  ? "border-white/15 bg-white/5 hover:border-sky-300/60 hover:bg-white/8"
+                  : "border-amber-400/30 bg-amber-400/5 hover:border-amber-400/60 hover:bg-amber-400/10"
               }`}
             >
               <div className="space-y-3">
                 <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-sky-400/15 text-2xl">
-                  ✨
+                  {isLoggedIn ? "✨" : "🔒"}
                 </div>
                 <div>
                   <p className="text-lg font-medium text-white">
-                    Drag & drop an image here
+                    {isLoggedIn ? "Drag & drop an image here" : "Sign in to remove backgrounds"}
                   </p>
                   <p className="mt-2 text-sm text-slate-300">
-                    or click to choose one from your device
+                    {isLoggedIn ? "or click to choose one from your device" : "Click here to sign in with Google — free, 3 removals included"}
                   </p>
                 </div>
                 <div className="text-xs uppercase tracking-[0.22em] text-slate-400">
-                  {supportedFormats} · Max {maxSizeLabel}
+                  {isLoggedIn ? `${supportedFormats} · Max ${maxSizeLabel}` : "No credit card required"}
                 </div>
               </div>
               <input
@@ -274,7 +289,7 @@ export default function Home() {
                 accept="image/png,image/jpeg,image/jpg,image/webp"
                 className="hidden"
                 onChange={onFileInput}
-                disabled={isBusy}
+                disabled={isBusy || !isLoggedIn}
               />
             </label>
 

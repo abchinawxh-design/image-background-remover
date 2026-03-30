@@ -59,6 +59,11 @@ export default function PricingPage() {
   return (
     <main className="min-h-screen bg-slate-950 text-white">
       <div className="max-w-5xl mx-auto px-4 py-16">
+        <div className="flex items-center gap-4 mb-8">
+          <Link href="/" className="text-slate-400 hover:text-white text-sm">← Back to home</Link>
+          <span className="text-slate-600">·</span>
+          <Link href="/dashboard" className="text-slate-400 hover:text-white text-sm">Dashboard</Link>
+        </div>
 
         {/* Header */}
         <div className="text-center mb-14">
