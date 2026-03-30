@@ -45,9 +45,7 @@ export default function Home() {
   const [originalPreview, setOriginalPreview] = useState<string | null>(null);
   const [downloadName, setDownloadName] = useState<string>("image-no-bg.png");
   const [resultPreview, setResultPreview] = useState<string | null>(null);
-  const [resultNote, setResultNote] = useState<string | null>(
-    "Demo mode is active. In this hosted MVP, processing runs as a front-end preview flow so the product experience stays accessible on the current deployment target."
-  );
+  const [resultNote, setResultNote] = useState<string | null>(null);
 
   const isBusy = status === "uploading";
 
@@ -75,7 +73,19 @@ export default function Home() {
         throw new Error("File is too large. Please upload an image under 10MB.");
       }
 
-      await new Promise((resolve) => setTimeout(resolve, 900));
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const response = await fetch("/api/remove-background", {
+        method: "POST",
+        body: formData,
+      });
+
+      const data = await response.json();
+
+      if (!response.ok || !data.success) {
+        throw new Error(data.error || "Failed to remove background. Please try again.");
+      }
 
       const baseName = (file.name || "image")
         .replace(/\.[^.]+$/, "")
@@ -83,13 +93,9 @@ export default function Home() {
         .replace(/-+/g, "-")
         .replace(/^-|-$/g, "") || "image";
 
-      const extension = file.type === "image/webp" ? "webp" : file.type === "image/png" ? "png" : "jpg";
-
-      setResultPreview(objectUrl);
-      setDownloadName(`${baseName}-preview.${extension}`);
-      setResultNote(
-        "This hosted MVP is currently running in demo mode on the front end. Upload, preview, and download flows are available; the real server-side background-removal provider can be reconnected later."
-      );
+      setResultPreview(data.resultUrl);
+      setDownloadName(data.filename || `${baseName}-no-bg.png`);
+      if (data.note) setResultNote(data.note);
       setStatus("success");
     } catch (err) {
       setStatus("error");

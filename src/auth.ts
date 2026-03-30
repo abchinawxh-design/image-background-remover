@@ -12,21 +12,29 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   session: { strategy: "jwt" },
   trustHost: true,
   callbacks: {
-    async jwt({ token, account }) {
-      if (account) {
-        // Pin sub to Google's stable providerAccountId (numeric string)
-        // This ensures the same user always gets the same ID across sessions
-        token.sub = account.providerAccountId;
+    async signIn({ user, account }) {
+      // upsertUser here — signIn callback runs in the full request context,
+      // so getCloudflareContext() / D1 binding is available on CF Pages.
+      if (account && user.email) {
+        const userId = account.providerAccountId; // stable Google numeric sub
         try {
           await upsertUser({
-            id: token.sub,
-            email: token.email!,
-            name: token.name,
-            image: token.picture as string | undefined,
+            id: userId,
+            email: user.email,
+            name: user.name,
+            image: user.image,
           });
         } catch (e) {
           console.error("[auth] upsertUser failed:", e);
+          // Do NOT block sign-in on DB errors
         }
+      }
+      return true;
+    },
+    async jwt({ token, account }) {
+      if (account) {
+        // Pin sub to Google's stable providerAccountId (numeric string)
+        token.sub = account.providerAccountId;
       }
       return token;
     },
