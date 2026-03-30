@@ -91,27 +91,28 @@ export default function Home() {
         body: formData,
       });
 
-      const data = await response.json();
-
       if (response.status === 401) {
-        throw new Error("Please sign in to use this feature. New accounts get 3 free removals.");
+        const data = await response.json().catch(() => ({}));
+        throw new Error(data.error || "Please sign in to use this feature. New accounts get 3 free removals.");
       }
       if (response.status === 403) {
+        const data = await response.json().catch(() => ({}));
         throw new Error(data.error || "You've reached your usage limit. Upgrade to Pro for more.");
       }
-      if (!response.ok || !data.success) {
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
         throw new Error(data.error || "Failed to remove background. Please try again.");
       }
 
-      const baseName = (file.name || "image")
-        .replace(/\.[^.]+$/, "")
-        .replace(/[^a-zA-Z0-9-_]+/g, "-")
-        .replace(/-+/g, "-")
-        .replace(/^-|-$/g, "") || "image";
+      // API returns binary image directly
+      const blob = await response.blob();
+      const resultObjectUrl = URL.createObjectURL(blob);
+      const filename = response.headers.get("X-Filename") || "result-no-bg.png";
+      const isMock = response.headers.get("X-Mock") === "1";
 
-      setResultPreview(data.resultUrl);
-      setDownloadName(data.filename || `${baseName}-no-bg.png`);
-      if (data.note) setResultNote(data.note);
+      setResultPreview(resultObjectUrl);
+      setDownloadName(filename);
+      if (isMock) setResultNote("Mock mode is active. Background was NOT removed.");
       setStatus("success");
     } catch (err) {
       setStatus("error");
