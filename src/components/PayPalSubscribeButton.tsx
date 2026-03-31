@@ -6,27 +6,66 @@ type Plan = 'pro_monthly' | 'pro_yearly';
 
 interface PayPalSubscribeButtonProps {
   plan: Plan;
+  clientId: string;
   onSuccess?: (data: { subscriptionId: string; plan: Plan }) => void;
   onError?: (error: Error) => void;
 }
 
-export default function PayPalSubscribeButton({ plan, onSuccess, onError }: PayPalSubscribeButtonProps) {
+export default function PayPalSubscribeButton({ plan, clientId, onSuccess, onError }: PayPalSubscribeButtonProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [sdkLoaded, setSdkLoaded] = useState(false);
   const [notConfigured, setNotConfigured] = useState(false);
 
+  // Load PayPal SDK dynamically with vault=true for subscriptions
   useEffect(() => {
-    if (!(window as any).paypal) {
-      setError('PayPal SDK not loaded. Please refresh the page.');
+    if (!clientId) {
+      setError('PayPal configuration missing');
       setLoading(false);
       return;
     }
 
-    const paypal = (window as any).paypal;
+    // Check if SDK already loaded
+    if ((window as any).paypal) {
+      setSdkLoaded(true);
+      setLoading(false);
+      return;
+    }
 
-    // Check if subscription plans are configured
-    // We'll detect this by trying to create a subscription
+    // Load SDK with vault=true for subscriptions
+    const script = document.createElement('script');
+    script.src = `https://www.paypal.com/sdk/js?client-id=${clientId}&currency=USD&vault=true&intent=subscription`;
+    script.async = true;
+    script.onload = () => {
+      setSdkLoaded(true);
+      setLoading(false);
+    };
+    script.onerror = () => {
+      setError('Failed to load PayPal SDK');
+      setLoading(false);
+    };
+    document.body.appendChild(script);
+
+    return () => {
+      // Cleanup not needed for PayPal SDK
+    };
+  }, [clientId]);
+
+  // Render PayPal subscription button when SDK is loaded
+  useEffect(() => {
+    if (!sdkLoaded || !containerRef.current) return;
+
+    const paypal = (window as any).paypal;
+    if (!paypal) {
+      setError('PayPal SDK not available');
+      return;
+    }
+
+    // Clear previous buttons
+    containerRef.current.innerHTML = '';
+
+    // Render PayPal subscription button
     paypal.Buttons({
       style: {
         shape: 'pill',
@@ -69,9 +108,7 @@ export default function PayPalSubscribeButton({ plan, onSuccess, onError }: PayP
         // User cancelled
       },
     }).render(containerRef.current);
-
-    setLoading(false);
-  }, [plan, onSuccess, onError, notConfigured]);
+  }, [sdkLoaded, plan, onSuccess, onError, notConfigured]);
 
   if (notConfigured) {
     return (

@@ -6,24 +6,63 @@ type Plan = 'pro_monthly' | 'pro_yearly';
 
 interface PayPalButtonsProps {
   plan: Plan;
+  clientId: string;
   onSuccess?: (data: { orderId: string; plan: Plan }) => void;
   onError?: (error: Error) => void;
 }
 
-export default function PayPalButtons({ plan, onSuccess, onError }: PayPalButtonsProps) {
+export default function PayPalButtons({ plan, clientId, onSuccess, onError }: PayPalButtonsProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [sdkLoaded, setSdkLoaded] = useState(false);
 
+  // Load PayPal SDK dynamically
   useEffect(() => {
-    // Check if PayPal SDK is loaded
-    if (!(window as any).paypal) {
-      setError('PayPal SDK not loaded. Please refresh the page.');
+    if (!clientId) {
+      setError('PayPal configuration missing');
       setLoading(false);
       return;
     }
 
+    // Check if SDK already loaded
+    if ((window as any).paypal) {
+      setSdkLoaded(true);
+      setLoading(false);
+      return;
+    }
+
+    // Load SDK
+    const script = document.createElement('script');
+    script.src = `https://www.paypal.com/sdk/js?client-id=${clientId}&currency=USD&intent=capture`;
+    script.async = true;
+    script.onload = () => {
+      setSdkLoaded(true);
+      setLoading(false);
+    };
+    script.onerror = () => {
+      setError('Failed to load PayPal SDK');
+      setLoading(false);
+    };
+    document.body.appendChild(script);
+
+    return () => {
+      // Cleanup not needed for PayPal SDK
+    };
+  }, [clientId]);
+
+  // Render PayPal buttons when SDK is loaded
+  useEffect(() => {
+    if (!sdkLoaded || !containerRef.current) return;
+
     const paypal = (window as any).paypal;
+    if (!paypal) {
+      setError('PayPal SDK not available');
+      return;
+    }
+
+    // Clear previous buttons
+    containerRef.current.innerHTML = '';
 
     // Render PayPal buttons
     paypal.Buttons({
@@ -72,9 +111,7 @@ export default function PayPalButtons({ plan, onSuccess, onError }: PayPalButton
         // User cancelled — no action needed
       },
     }).render(containerRef.current);
-
-    setLoading(false);
-  }, [plan, onSuccess, onError]);
+  }, [sdkLoaded, plan, onSuccess, onError]);
 
   return (
     <div className="w-full">
